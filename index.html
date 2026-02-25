@@ -1,55 +1,246 @@
 <!doctype html>
-<html>
+<html lang="da">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <title>Timer (Wrapper)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>Timeregistrering</title>
+
+  <!-- PWA / iOS webapp -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <meta name="theme-color" content="#173d2f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Timer" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
 
   <style>
-    html, body { height:100%; margin:0; background:#173d2f; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto; }
-    .bar { padding:12px 14px; font-size:14px; opacity:.95; }
-    .pill { display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.12); margin-right:8px; }
-    a { color:#9fffd2; word-break:break-all; }
-    iframe { width:100%; height:calc(100% - 64px); border:0; background:#173d2f; }
+    :root{
+      --bg:#173d2f;
+      --panel:rgba(255,255,255,.10);
+      --panel2:rgba(0,0,0,.25);
+      --txt:#ffffff;
+      --muted:rgba(255,255,255,.75);
+      --accent:#9fffd2;
+    }
+
+    html, body{
+      height:100%;
+      margin:0;
+      background:var(--bg);
+      color:var(--txt);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;
+      -webkit-text-size-adjust:100%;
+      overflow:hidden;
+    }
+
+    /* Topbar (lille debug/status – kan skjules via ?kiosk=1) */
+    .bar{
+      position:fixed;
+      top:0; left:0; right:0;
+      padding: calc(10px + env(safe-area-inset-top)) 12px 10px 12px;
+      background: linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,0));
+      z-index:10;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      pointer-events:none; /* så den ikke “stjæler” tap */
+    }
+
+    .left, .right{ display:flex; gap:8px; align-items:center; }
+    .pill{
+      pointer-events:auto;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      background:var(--panel);
+      backdrop-filter: blur(8px);
+      font-size:12px;
+      line-height:1;
+      color:var(--muted);
+      white-space:nowrap;
+      box-shadow:0 8px 20px rgba(0,0,0,.20);
+    }
+    .dot{
+      width:8px; height:8px; border-radius:50%;
+      background:#f1c40f;
+      box-shadow:0 0 0 0 rgba(241,196,15,.0);
+    }
+    .dot.ok{ background:#2ecc71; }
+    .dot.bad{ background:#e74c3c; }
+
+    a{ color:var(--accent); text-decoration:none; }
+    a:active{ opacity:.8; }
+
+    /* App iframe */
+    iframe{
+      position:fixed;
+      top:0; left:0; right:0; bottom:0;
+      width:100%;
+      height:100%;
+      border:0;
+      background:var(--bg);
+      z-index:1;
+    }
+
+    /* Lille “fallback” hvis iframe blokeres */
+    #fallback{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+      text-align:center;
+      z-index:20;
+      background:rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+    }
+    .card{
+      width:min(620px, 92vw);
+      background:rgba(23,61,47,.92);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:20px;
+      padding:18px 18px 16px;
+      box-shadow:0 22px 60px rgba(0,0,0,.45);
+    }
+    .card h2{
+      margin:0 0 8px 0;
+      font-size:18px;
+      letter-spacing:.2px;
+    }
+    .card p{
+      margin:0 0 10px 0;
+      opacity:.9;
+      line-height:1.45;
+      font-size:14px;
+    }
+    .btnRow{
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .btn{
+      border:none;
+      border-radius:999px;
+      padding:10px 14px;
+      background:rgba(255,255,255,.14);
+      color:#fff;
+      cursor:pointer;
+      font-weight:600;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active{ transform:scale(.98); }
+
+    /* Skjul bar i kiosk */
+    body.kiosk .bar{ display:none; }
   </style>
 </head>
 
 <body>
-  <div class="bar">
-    <span class="pill">Wrapper loaded ✅</span>
-    <span id="state" class="pill">Iframe: loader…</span><br>
-    GAS URL: <a id="link" href="#" target="_blank" rel="noopener">—</a>
+  <div class="bar" id="bar">
+    <div class="left">
+      <div class="pill"><span class="dot" id="dot"></span><span id="state">Loader…</span></div>
+      <div class="pill" id="swState">PWA: —</div>
+    </div>
+    <div class="right">
+      <div class="pill">GAS: <a id="link" href="#" target="_blank" rel="noopener">åbn</a></div>
+    </div>
   </div>
 
-  <iframe id="app"></iframe>
+  <iframe id="app" title="Timeregistrering"></iframe>
+
+  <div id="fallback">
+    <div class="card">
+      <h2>⚠️ Kunne ikke indlæse app’en</h2>
+      <p>
+        Det ligner at iFrame blev blokeret eller netværket fejlede.
+        Prøv at åbne Apps Script siden direkte – eller tjek at din webapp tillader embedding.
+      </p>
+      <p style="word-break:break-all; font-size:12px; opacity:.85">
+        URL: <span id="failUrl">—</span>
+      </p>
+      <div class="btnRow">
+        <button class="btn" id="retry">Prøv igen</button>
+        <button class="btn" id="openDirect">Åbn direkte</button>
+      </div>
+    </div>
+  </div>
 
   <script>
-    // 🔴 INDSÆT DIN GAS WEBAPP URL HER
+    // ✅ INDSÆT DIN GAS WEBAPP URL HER (skal starte med https://)
     const GAS_URL = "https://script.google.com/macros/s/AKfycbwrATvQwaghjqkmiU_2Dat8P8TnihGNB9PTre-v3nFScYkEzJ7kzpfl4WO5mtvNqOXx/exec";
 
     const iframe = document.getElementById("app");
     const link = document.getElementById("link");
     const state = document.getElementById("state");
+    const dot = document.getElementById("dot");
+    const fallback = document.getElementById("fallback");
+    const failUrl = document.getElementById("failUrl");
 
+    // Kiosk mode: tilføj ?kiosk=1 til GitHub Pages URL for at skjule statusbar
+    const params = new URLSearchParams(location.search);
+    if (params.get("kiosk") === "1") document.body.classList.add("kiosk");
+
+    // Link til at åbne GAS direkte
     link.href = GAS_URL;
-    link.textContent = GAS_URL;
+    failUrl.textContent = GAS_URL;
 
-    // Hvis iframe ikke må loades (X-Frame-Options/CSP), får du typisk “blank” iframe.
-    // Vi viser derfor status efter 2 sek.
+    // iFrame load check
     let loaded = false;
+
+    function setState(ok, text){
+      state.textContent = text;
+      dot.classList.remove("ok","bad");
+      dot.classList.add(ok ? "ok" : "bad");
+    }
 
     iframe.addEventListener("load", () => {
       loaded = true;
-      state.textContent = "Iframe: loaded ✅";
+      setState(true, "Indlæst ✅");
+      fallback.style.display = "none";
     });
 
-    iframe.src = GAS_URL;
+    function loadIframe(){
+      loaded = false;
+      setState(false, "Loader…");
+      dot.classList.remove("bad");
+      // cache-bust for at undgå “hæng” ved iOS
+      iframe.src = GAS_URL + (GAS_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
+    }
 
+    loadIframe();
+
+    // Hvis den ikke loades efter 2.5 sek -> vis fallback
     setTimeout(() => {
-      if (!loaded) {
-        state.textContent = "Iframe: ikke loaded (blokering?) ⚠️";
+      if (!loaded){
+        setState(false, "Ikke indlæst ⚠️");
+        fallback.style.display = "flex";
       }
-    }, 2000);
+    }, 2500);
+
+    // Fallback knapper
+    document.getElementById("retry").addEventListener("click", () => loadIframe());
+    document.getElementById("openDirect").addEventListener("click", () => window.open(GAS_URL, "_blank", "noopener"));
+
+    // PWA: service worker (valgfri men anbefalet)
+    const swPill = document.getElementById("swState");
+    (async () => {
+      try{
+        if ("serviceWorker" in navigator){
+          await navigator.serviceWorker.register("./sw.js");
+          swPill.textContent = "PWA: OK ✅";
+        } else {
+          swPill.textContent = "PWA: ikke understøttet";
+        }
+      } catch(e){
+        swPill.textContent = "PWA: fejl";
+      }
+    })();
   </script>
 </body>
 </html>
