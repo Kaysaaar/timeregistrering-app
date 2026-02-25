@@ -1,26 +1,63 @@
-const CACHE = "timer-wrapper-v1";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+/* Simple “cache-first” PWA service worker for GitHub Pages wrapper */
+const CACHE_NAME = "timer-wrapper-v1";
+const CORE_ASSETS = [
+  "./",
+  "./index.html",
+  "./manifest.webmanifest",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./sw.js"
+];
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)));
+// Install: cache core assets
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_ASSETS))
+  );
   self.skipWaiting();
 });
 
-self.addEventListener("activate", (e) => {
-  e.waitUntil(self.clients.claim());
+// Activate: cleanup old caches
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : null)))
+    )
+  );
+  self.clients.claim();
 });
 
-self.addEventListener("fetch", (e) => {
-  const url = new URL(e.request.url);
+// Fetch:
+// - Wrapper files: cache-first
+// - Everything else (incl. Apps Script iframe): network-first (don’t cache cross-site)
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
 
-  // Cache wrapper-filerne (GitHub Pages)
-  if (url.origin === location.origin) {
-    e.respondWith(
-      caches.match(e.request).then((hit) => hit || fetch(e.request))
+  // Only handle GET
+  if (req.method !== "GET") return;
+
+  // Same-origin = your GitHub Pages domain
+  const sameOrigin = url.origin === self.location.origin;
+
+  if (sameOrigin) {
+    // Cache-first for wrapper assets
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        if (cached) return cached;
+        return fetch(req).then((resp) => {
+          // cache a copy
+          const copy = resp.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          return resp;
+        });
+      })
     );
     return;
   }
 
-  // Alt andet (fx script.google) -> bare netværk (ikke cache)
-  e.respondWith(fetch(e.request));
+  // Cross-origin (e.g. script.google.com): network-first (don’t cache)
+  event.respondWith(
+    fetch(req).catch(() => caches.match("./"))
+  );
 });
