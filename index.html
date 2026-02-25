@@ -1,47 +1,55 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-
-  <title>Timer</title>
-
-  <!-- PWA -->
-  <link rel="manifest" href="./manifest.webmanifest">
-  <meta name="theme-color" content="#173d2f">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Timer (Wrapper)</title>
 
   <style>
-    html,body{
-      margin:0;
-      height:100%;
-      background:#173d2f;
-    }
-    iframe{
-      border:0;
-      width:100%;
-      height:100%;
-    }
+    html, body { height:100%; margin:0; background:#173d2f; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto; }
+    .bar { padding:12px 14px; font-size:14px; opacity:.95; }
+    .pill { display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.12); margin-right:8px; }
+    a { color:#9fffd2; word-break:break-all; }
+    iframe { width:100%; height:calc(100% - 64px); border:0; background:#173d2f; }
   </style>
 </head>
 
 <body>
+  <div class="bar">
+    <span class="pill">Wrapper loaded ✅</span>
+    <span id="state" class="pill">Iframe: loader…</span><br>
+    GAS URL: <a id="link" href="#" target="_blank" rel="noopener">—</a>
+  </div>
 
-<iframe id="app"></iframe>
+  <iframe id="app"></iframe>
 
-<script>
-  // 👉 INDSÆT DIN GAS WEBAPP URL HER
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwrATvQwaghjqkmiU_2Dat8P8TnihGNB9PTre-v3nFScYkEzJ7kzpfl4WO5mtvNqOXx/exec";
+  <script>
+    // 🔴 INDSÆT DIN GAS WEBAPP URL HER
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwrATvQwaghjqkmiU_2Dat8P8TnihGNB9PTre-v3nFScYkEzJ7kzpfl4WO5mtvNqOXx/exec";
 
-  document.getElementById("app").src = GAS_URL;
+    const iframe = document.getElementById("app");
+    const link = document.getElementById("link");
+    const state = document.getElementById("state");
 
-  // registrer service worker (stabil app)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js');
-  }
-</script>
+    link.href = GAS_URL;
+    link.textContent = GAS_URL;
 
+    // Hvis iframe ikke må loades (X-Frame-Options/CSP), får du typisk “blank” iframe.
+    // Vi viser derfor status efter 2 sek.
+    let loaded = false;
+
+    iframe.addEventListener("load", () => {
+      loaded = true;
+      state.textContent = "Iframe: loaded ✅";
+    });
+
+    iframe.src = GAS_URL;
+
+    setTimeout(() => {
+      if (!loaded) {
+        state.textContent = "Iframe: ikke loaded (blokering?) ⚠️";
+      }
+    }, 2000);
+  </script>
 </body>
 </html>
