@@ -172,75 +172,76 @@
   </div>
 
   <script>
-    // ✅ INDSÆT DIN GAS WEBAPP URL HER (skal starte med https://)
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwrATvQwaghjqkmiU_2Dat8P8TnihGNB9PTre-v3nFScYkEzJ7kzpfl4WO5mtvNqOXx/exec";
+  const BASE_GAS_URL = "https://script.google.com/macros/s/AKfycbwrATvQwaghjqkmiU_2Dat8P8TnihGNB9PTre-v3nFScYkEzJ7kzpfl4WO5mtvNqOXx/exec";
 
-    const iframe = document.getElementById("app");
-    const link = document.getElementById("link");
-    const state = document.getElementById("state");
-    const dot = document.getElementById("dot");
-    const fallback = document.getElementById("fallback");
-    const failUrl = document.getElementById("failUrl");
+  const iframe = document.getElementById("app");
+  const link = document.getElementById("link");
+  const state = document.getElementById("state");
+  const dot = document.getElementById("dot");
+  const fallback = document.getElementById("fallback");
+  const failUrl = document.getElementById("failUrl");
 
-    // Kiosk mode: tilføj ?kiosk=1 til GitHub Pages URL for at skjule statusbar
-    const params = new URLSearchParams(location.search);
-    if (params.get("kiosk") === "1") document.body.classList.add("kiosk");
+  const params = new URLSearchParams(location.search);
+  if (params.get("kiosk") === "1") document.body.classList.add("kiosk");
 
-    // Link til at åbne GAS direkte
-    link.href = GAS_URL;
-    failUrl.textContent = GAS_URL;
+  const page = params.get("page");
+  let targetUrl = BASE_GAS_URL;
 
-    // iFrame load check
-    let loaded = false;
+  if (page) {
+    targetUrl += "?page=" + encodeURIComponent(page);
+  }
 
-    function setState(ok, text){
-      state.textContent = text;
-      dot.classList.remove("ok","bad");
-      dot.classList.add(ok ? "ok" : "bad");
+  link.href = targetUrl;
+  failUrl.textContent = targetUrl;
+
+  let loaded = false;
+
+  function setState(ok, text){
+    state.textContent = text;
+    dot.classList.remove("ok","bad");
+    dot.classList.add(ok ? "ok" : "bad");
+  }
+
+  function loadIframe(){
+    loaded = false;
+    setState(false, "Loader…");
+    dot.classList.remove("bad");
+
+    const sep = targetUrl.includes("?") ? "&" : "?";
+    iframe.src = targetUrl + sep + "t=" + Date.now();
+  }
+
+  iframe.addEventListener("load", () => {
+    loaded = true;
+    setState(true, "Indlæst ✅");
+    fallback.style.display = "none";
+  });
+
+  loadIframe();
+
+  setTimeout(() => {
+    if (!loaded){
+      setState(false, "Ikke indlæst ⚠️");
+      fallback.style.display = "flex";
     }
+  }, 2500);
 
-    iframe.addEventListener("load", () => {
-      loaded = true;
-      setState(true, "Indlæst ✅");
-      fallback.style.display = "none";
-    });
+  document.getElementById("retry").addEventListener("click", () => loadIframe());
+  document.getElementById("openDirect").addEventListener("click", () => window.open(targetUrl, "_blank", "noopener"));
 
-    function loadIframe(){
-      loaded = false;
-      setState(false, "Loader…");
-      dot.classList.remove("bad");
-      // cache-bust for at undgå “hæng” ved iOS
-      iframe.src = GAS_URL + (GAS_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
+  const swPill = document.getElementById("swState");
+  (async () => {
+    try{
+      if ("serviceWorker" in navigator){
+        await navigator.serviceWorker.register("./sw.js");
+        swPill.textContent = "PWA: OK ✅";
+      } else {
+        swPill.textContent = "PWA: ikke understøttet";
+      }
+    } catch(e){
+      swPill.textContent = "PWA: fejl";
     }
-
-    loadIframe();
-
-    // Hvis den ikke loades efter 2.5 sek -> vis fallback
-    setTimeout(() => {
-      if (!loaded){
-        setState(false, "Ikke indlæst ⚠️");
-        fallback.style.display = "flex";
-      }
-    }, 2500);
-
-    // Fallback knapper
-    document.getElementById("retry").addEventListener("click", () => loadIframe());
-    document.getElementById("openDirect").addEventListener("click", () => window.open(GAS_URL, "_blank", "noopener"));
-
-    // PWA: service worker (valgfri men anbefalet)
-    const swPill = document.getElementById("swState");
-    (async () => {
-      try{
-        if ("serviceWorker" in navigator){
-          await navigator.serviceWorker.register("./sw.js");
-          swPill.textContent = "PWA: OK ✅";
-        } else {
-          swPill.textContent = "PWA: ikke understøttet";
-        }
-      } catch(e){
-        swPill.textContent = "PWA: fejl";
-      }
-    })();
-  </script>
+  })();
+</script>
 </body>
 </html>
