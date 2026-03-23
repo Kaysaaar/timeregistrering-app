@@ -1,5 +1,5 @@
 /* Simple “cache-first” PWA service worker for GitHub Pages wrapper */
-const CACHE_NAME = "timer-wrapper-v1";
+const CACHE_NAME = "timer-wrapper-v2026-03-23";
 const CORE_ASSETS = [
   "./",
   "./index.html",
