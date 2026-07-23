@@ -217,15 +217,17 @@
     fallback.style.display = "none";
   });
 
-    /* Modtag navigation fra Apps Script-iframe */
-  window.addEventListener("message", function(event){
-  // Accepter kun beskeder fra den iframe, vi selv viser
-  if (event.source !== iframe.contentWindow) return;
-
+    /* Modtag navigation fra Apps Script */
+window.addEventListener("message", function(event){
   const data = event.data || {};
 
+  // Godkend kun vores egne beskeder
   if (data.app !== "wallmann-tid") return;
   if (data.action !== "navigate") return;
+
+  // Godkend kun kendte sider
+  const allowedPages = ["home", "login", "admin"];
+  if (!allowedPages.includes(data.page)) return;
 
   const nextUrl = new URL(window.location.href);
 
@@ -233,13 +235,11 @@
     nextUrl.search = "?page=admin&kiosk=1";
   } else if (data.page === "login"){
     nextUrl.search = "?page=login&kiosk=1";
-  } else if (data.page === "home"){
-    nextUrl.search = "?kiosk=1";
   } else {
-    return;
+    nextUrl.search = "?kiosk=1";
   }
 
-  window.location.replace(nextUrl.toString());
+  window.location.href = nextUrl.toString();
 });
 
   loadIframe();
