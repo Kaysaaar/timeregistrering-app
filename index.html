@@ -217,6 +217,31 @@
     fallback.style.display = "none";
   });
 
+    /* Modtag navigation fra Apps Script-iframe */
+  window.addEventListener("message", function(event){
+  // Accepter kun beskeder fra den iframe, vi selv viser
+  if (event.source !== iframe.contentWindow) return;
+
+  const data = event.data || {};
+
+  if (data.app !== "wallmann-tid") return;
+  if (data.action !== "navigate") return;
+
+  const nextUrl = new URL(window.location.href);
+
+  if (data.page === "admin"){
+    nextUrl.search = "?page=admin&kiosk=1";
+  } else if (data.page === "login"){
+    nextUrl.search = "?page=login&kiosk=1";
+  } else if (data.page === "home"){
+    nextUrl.search = "?kiosk=1";
+  } else {
+    return;
+  }
+
+  window.location.replace(nextUrl.toString());
+});
+
   loadIframe();
 
   setTimeout(() => {
